@@ -123,7 +123,7 @@ def VerticalTrussProblem():
     from mfpy.materials.linearelastic import LinearElastic
     from mfpy.dof import DOF
     from mfpy.boundcond import BC
-    from mfpy.postproc.output import KinematicOutput
+    from mfpy.postproc.kinematicoutput import KinematicOutput
 
     dt = 0.01
 
@@ -155,17 +155,17 @@ def VerticalTrussProblem():
     show()
 
 def HorizontalTrussProblem():
-    from mfpy.elements.quad import Quad
-    from mfpy.elements.truss import Truss
+    from mfpy.elements import Quad
+    from mfpy.elements import Truss
     from mfpy.materials.linearelastic import LinearElastic
     from mfpy.dof import DOF
     from mfpy.boundcond import BC
-    from mfpy.postproc.output import KinematicOutput
+    from mfpy.postproc import KinematicOutput
 
     dt = 0.01
 
     nodes = [(0.,0.), (4.,0.), (4.,1.5), (0.,1.),
-             (1.,2.05), (3.,2.05)]
+             (1.,2.0), (3.,2.0)]
     nodes = [array(n, dtype=float64) for n in nodes]
 
     materials = [ LinearElastic(lmbda=0.0, mu=1.0, rho=1.0) ]
@@ -185,8 +185,8 @@ def HorizontalTrussProblem():
     DynamicExplicit.run(nodes, elements, materials, vel_ic, vel_bc, fext_bc, kin_output, dt=dt, t_end=10.)
 
     from pylab import plot, show
-    plot(kin_output.t, kin_output.u[:,11]+1.05)
-    plot(kin_output.t, kin_output.u[:, 9]+1.05)
+    plot(kin_output.t, kin_output.u[:,11]+1.0)
+    plot(kin_output.t, kin_output.u[:, 9]+1.0)
     plot(kin_output.t, kin_output.u[:,7]*0.75 + (kin_output.u[:,5]+0.5)*0.25 )
     plot(kin_output.t, kin_output.u[:,7]*0.25 + (kin_output.u[:,5]+0.5)*0.75 )
 

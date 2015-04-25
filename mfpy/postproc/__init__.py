@@ -1,1 +1,4 @@
-__author__ = 'Mohamed'
+__author__ = 'Mohamed Moussa'
+
+from mfpy.postproc.kinematicoutput import KinematicOutput
+
