@@ -3,9 +3,9 @@ __author__ = 'Mohamed Moussa'
 from numpy import array, empty, zeros, hstack
 from numpy.linalg import norm, det, inv as inverse
 
-import mofem.coordsys as cs
-from mofem.elements.element import Element
-from mofem.dof import DOF, DOFSet
+import mfpy.coordsys as cs
+from mfpy.elements.element import Element
+from mfpy.dof import DOF, DOFSet
 
 class Truss(metaclass=Element):
     dof_sig = [DOFSet(DOF.X, DOF.Y),
@@ -14,7 +14,7 @@ class Truss(metaclass=Element):
 
 
     def __init__(self, nodes, enm, mat, **params):
-        from mofem.elements.element import check_params_valid
+        from mfpy.elements.element import check_params_valid
         assert(check_params_valid(Truss, params))
 
         self.nodes = [nodes[i] for i in enm]
@@ -92,7 +92,7 @@ class Truss(metaclass=Element):
 
 
 def test():
-    from mofem.materials.linearelastic import LinearElastic
+    from mfpy.materials.linearelastic import LinearElastic
 
     # Test create
     nodes = [array((0,0)), array((1,0))]

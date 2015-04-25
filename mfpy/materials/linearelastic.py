@@ -1,13 +1,13 @@
 __author__ = 'Mohamed Moussa'
 
-from mofem.materials.material import Material
-from mofem.tensorutils import trace, I, IoI, II
+from mfpy.materials.material import Material
+from mfpy.tensorutils import trace, I, IoI, II
 
 class LinearElastic(metaclass = Material):
     param_names =["lmbda" , "mu", "rho"]
 
     def __init__(self, **params):
-        from mofem.materials.material import check_params_valid
+        from mfpy.materials.material import check_params_valid
         assert(check_params_valid(LinearElastic, params))
         self.params = params
 

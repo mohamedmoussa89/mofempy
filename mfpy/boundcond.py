@@ -30,10 +30,10 @@ def apply_bc_pairs_on_vec(bc_pairs, vec):
         vec[dof_id] = val
 
 def test():
-    from mofem.elements.truss import Truss
-    from mofem.materials.linearelastic import LinearElastic
-    from mofem.assembly import calculate_nds, calculate_ndm, calculate_edm
-    from mofem.dof import DOF
+    from mfpy.elements.truss import Truss
+    from mfpy.materials.linearelastic import LinearElastic
+    from mfpy.assembly import calculate_nds, calculate_ndm, calculate_edm
+    from mfpy.dof import DOF
     from numpy import array
 
     elements = [ Truss([], [0,1], None, area=1),

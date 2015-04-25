@@ -17,7 +17,7 @@ class Element(type):
 
     def __new__(meta, name, bases, dct):
         from functools import reduce
-        from mofem.dof import DOF
+        from mfpy.dof import DOF
 
         # Calculate number of degrees of freedom
         dct["num_dof"] = sum([len(ds) for ds in dct["dof_sig"]])

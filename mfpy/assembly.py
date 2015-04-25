@@ -3,7 +3,7 @@ __author__ = 'Mohamed Moussa'
 from numpy import array, empty, zeros, hstack
 from numpy.linalg import det, inv as inverse
 
-from mofem.dof import DOFSet
+from mfpy.dof import DOFSet
 
 def calculate_nds(elem_node_maps, elem_types, num_nodes=None):
     """Calculate DOF Set for every node in the element node map (ENM)"""
@@ -45,7 +45,7 @@ def calculate_edm(elem_node_maps, node_dof_maps):
 def calculate_ntdm(node_dof_sets, elem_node_maps, node_dof_maps):
     """Calculate Node Translational DOF Map
     The NTDM is the mapping of the node ID to the translational DOF only"""
-    from mofem.dof import DOF
+    from mfpy.dof import DOF
 
     local_td = [ds.indexOf([DOF.X, DOF.Y]) for ds in node_dof_sets]
 

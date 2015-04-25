@@ -2,23 +2,23 @@ __author__ = 'Mohamed Moussa'
 
 from numpy import array, empty, zeros, float64
 
-from mofem.controls.control import Control
+from mfpy.controls.control import Control
 
 class DynamicExplicit(metaclass=Control):
     param_names = ["dt", "t_end"]
 
     @staticmethod
     def run(nodes, elements, materials, vel_ic, vel_bc, fext_bc, kin_output, **params):
-        from mofem.assembly import calculate_nds, calculate_ndm, calculate_edm
-        from mofem.assembly import calculate_ntdm, calculate_etdm
-        from mofem.assembly import assemble_lumped_mass, assemble_internal_force
-        from mofem.assembly import get_number_dofs, updated_node_positions
-        from mofem.boundcond import generate_bc_pairs, apply_bc_pairs_on_vec
+        from mfpy.assembly import calculate_nds, calculate_ndm, calculate_edm
+        from mfpy.assembly import calculate_ntdm, calculate_etdm
+        from mfpy.assembly import assemble_lumped_mass, assemble_internal_force
+        from mfpy.assembly import get_number_dofs, updated_node_positions
+        from mfpy.boundcond import generate_bc_pairs, apply_bc_pairs_on_vec
 
-        from mofem.topology import find_boundary_segment_map, find_boundary_nodes
-        from mofem.contact import find_new_active_nodes, update_active_node_distances, remove_inactive_nodes
-        from mofem.contact import calculate_contact_accel_ei, calculate_cdm
-        from mofem.contact import calculate_contact_force_dna
+        from mfpy.topology import find_boundary_segment_map, find_boundary_nodes
+        from mfpy.contact import find_new_active_nodes, update_active_node_distances, remove_inactive_nodes
+        from mfpy.contact import calculate_contact_accel_ei, calculate_cdm
+        from mfpy.contact import calculate_contact_force_dna
 
         from numpy import hstack, vstack, zeros, array_str
         from numpy.linalg import LinAlgError, norm
@@ -119,12 +119,12 @@ class DynamicExplicit(metaclass=Control):
         kin_output.finalize()
 
 def VerticalTrussProblem():
-    from mofem.elements.quad import Quad
-    from mofem.elements.truss import Truss
-    from mofem.materials.linearelastic import LinearElastic
-    from mofem.dof import DOF
-    from mofem.boundcond import BC
-    from mofem.output import KinematicOutput
+    from mfpy.elements.quad import Quad
+    from mfpy.elements.truss import Truss
+    from mfpy.materials.linearelastic import LinearElastic
+    from mfpy.dof import DOF
+    from mfpy.boundcond import BC
+    from mfpy.output import KinematicOutput
 
     dt = 0.01
 
@@ -156,12 +156,12 @@ def VerticalTrussProblem():
     show()
 
 def HorizontalTrussProblem():
-    from mofem.elements.quad import Quad
-    from mofem.elements.truss import Truss
-    from mofem.materials.linearelastic import LinearElastic
-    from mofem.dof import DOF
-    from mofem.boundcond import BC
-    from mofem.output import KinematicOutput
+    from mfpy.elements.quad import Quad
+    from mfpy.elements.truss import Truss
+    from mfpy.materials.linearelastic import LinearElastic
+    from mfpy.dof import DOF
+    from mfpy.boundcond import BC
+    from mfpy.output import KinematicOutput
 
     dt = 0.01
 

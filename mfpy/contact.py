@@ -31,7 +31,7 @@ def find_closest_boundary_segment_projection(nodes, elements, node_id, boundary_
     """Find closest (projected) point the given boundary segments to a given node"""
 
     from numpy import dot, inf as infinity
-    from mofem.geometry import project_node_on_segment, calculate_segment_normal
+    from mfpy.geometry import project_node_on_segment, calculate_segment_normal
 
     boundary_node = nodes[node_id]
 
@@ -109,7 +109,7 @@ def update_active_node_distances(active_list, nodes, elements):
     """Updates distances for current active nodes"""
 
     from numpy import dot
-    from mofem.geometry import project_node_on_segment, calculate_segment_normal
+    from mfpy.geometry import project_node_on_segment, calculate_segment_normal
 
     for ap in active_list:
         node_id, seg, elem_id, elem_seg = ap.node_id, ap.segment, ap.element_id, ap.element_segment

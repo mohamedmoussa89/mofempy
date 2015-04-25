@@ -6,8 +6,8 @@ from math import sqrt
 from numpy import array, empty, zeros, hstack
 from numpy.linalg import det, inv as inverse
 
-from mofem.elements.element import Element
-from mofem.dof import DOF, DOFSet
+from mfpy.elements.element import Element
+from mfpy.dof import DOF, DOFSet
 
 class Quad(metaclass=Element):
     """2D Quadrilateral Element"""
@@ -21,7 +21,7 @@ class Quad(metaclass=Element):
     gauss_loc = list(product([-1/sqrt(3), 1/sqrt(3)],repeat=2))
 
     def __init__(self, nodes, enm, mat, **params):
-        from mofem.elements.element import check_params_valid
+        from mfpy.elements.element import check_params_valid
         assert(check_params_valid(Quad, params))
 
         self.nodes = [nodes[i] for i in enm]
@@ -149,7 +149,7 @@ class Quad(metaclass=Element):
 
 
 def test():
-    from mofem.materials.linearelastic import LinearElastic
+    from mfpy.materials.linearelastic import LinearElastic
 
     # Test create
     nodes = [array((0,0)), array((1,0)), array((1,1)), array((0,1))]
