@@ -1,6 +1,6 @@
 __author__ = 'Mohamed Moussa'
 
-from numpy import array, empty, zeros, float64
+from numpy import array, empty, float64
 
 from mfpy.controls.control import Control
 
@@ -10,7 +10,7 @@ class DynamicExplicit(metaclass=Control):
     @staticmethod
     def run(nodes, elements, materials, vel_ic, vel_bc, fext_bc, kin_output, **params):
         from mfpy.assembly import calculate_nds, calculate_ndm, calculate_edm
-        from mfpy.assembly import calculate_ntdm, calculate_etdm
+        from mfpy.assembly import calculate_ntdm
         from mfpy.assembly import assemble_lumped_mass, assemble_internal_force
         from mfpy.assembly import get_number_dofs, updated_node_positions
         from mfpy.boundcond import generate_bc_pairs, apply_bc_pairs_on_vec
@@ -20,8 +20,7 @@ class DynamicExplicit(metaclass=Control):
         from mfpy.contact import calculate_contact_accel_ei, calculate_cdm
         from mfpy.contact import calculate_contact_force_dna
 
-        from numpy import hstack, vstack, zeros, array_str
-        from numpy.linalg import LinAlgError, norm
+        from numpy import zeros
 
         dt = params["dt"]
         t_end = params["t_end"]
@@ -124,7 +123,7 @@ def VerticalTrussProblem():
     from mfpy.materials.linearelastic import LinearElastic
     from mfpy.dof import DOF
     from mfpy.boundcond import BC
-    from mfpy.output import KinematicOutput
+    from mfpy.postproc.output import KinematicOutput
 
     dt = 0.01
 
@@ -161,7 +160,7 @@ def HorizontalTrussProblem():
     from mfpy.materials.linearelastic import LinearElastic
     from mfpy.dof import DOF
     from mfpy.boundcond import BC
-    from mfpy.output import KinematicOutput
+    from mfpy.postproc.output import KinematicOutput
 
     dt = 0.01
 
