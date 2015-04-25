@@ -1,5 +1,3 @@
-__author__ = 'Mohamed Moussa'
-
 from numpy import array, row_stack, inf
 
 class KinematicOutput(object):
@@ -8,9 +6,9 @@ class KinematicOutput(object):
     Attributes
     ----------
     t : list of float
-    u : list of arrays
-    v : list of arrays
-    a : list of arrays
+    u : list of array
+    v : list of array
+    a : list of array
 
     """
 
@@ -42,11 +40,11 @@ class KinematicOutput(object):
         ----------
         t : float
             Timestamp
-        u : array_like
+        u : array
             Displacement array
-        v : array_like
+        v : array
             Velocity array
-        a : array_like
+        a : array
             Acceleration array
         """
 
