@@ -4,11 +4,13 @@ from numpy import array, empty, float64
 
 from mfpy.controls.control import Control
 
+from mfpy.postproc import TemporalVectorOutput
+
 class DynamicExplicit(metaclass=Control):
     param_names = ["dt", "t_end"]
 
     @staticmethod
-    def run(nodes, elements, materials, vel_ic, vel_bc, fext_bc, kin_output, **params):
+    def run(nodes, elements, materials, vel_ic, vel_bc, fext_bc, dt, t_end, pp_dt):
         from mfpy.assembly import calculate_nds, calculate_ndm, calculate_edm
         from mfpy.assembly import calculate_ntdm
         from mfpy.assembly import assemble_lumped_mass, assemble_internal_force
@@ -21,9 +23,6 @@ class DynamicExplicit(metaclass=Control):
         from mfpy.contact import calculate_contact_force_dna
 
         from numpy import zeros
-
-        dt = params["dt"]
-        t_end = params["t_end"]
 
         # Calculate DOF maps
         enm = [e.enm for e in elements]
@@ -75,7 +74,10 @@ class DynamicExplicit(metaclass=Control):
         active_list = []
 
         t = 0
-        kin_output.add(t, u, v, a)
+
+        # Output
+        output = TemporalVectorOutput(pp_dt, ["u","v","a"])
+        output.add(t, u=u, v=v, a=a)
 
         while t + dt <= t_end:
             t += dt
@@ -89,7 +91,6 @@ class DynamicExplicit(metaclass=Control):
             nodes_curr = updated_node_positions(ntdm, nodes_ref, u)
 
             assemble_internal_force(enm, edm, nodes_curr, elements, u, fint)
-
 
             d_threshold = 2*max(abs(v))*dt
             active_list = update_active_node_distances(active_list, nodes_curr, elements)
@@ -112,10 +113,10 @@ class DynamicExplicit(metaclass=Control):
 
             v += dt/2*a
             apply_bc_pairs_on_vec(vel_bc_pairs, v)
+            output.add(t, u=u, v=v, a=a)
 
-            kin_output.add(t, u, v, a)
-
-        kin_output.finalize()
+        output.finalize()
+        return output
 
 def VerticalTrussProblem():
     from mfpy.elements.quad import Quad
@@ -123,9 +124,10 @@ def VerticalTrussProblem():
     from mfpy.materials.linearelastic import LinearElastic
     from mfpy.dof import DOF
     from mfpy.boundcond import BC
-    from mfpy.postproc.kinematicoutput import KinematicOutput
 
     dt = 0.01
+    t_end = 5.0
+    pp_dt = dt
 
     nodes = [(0.,0.), (4.,0.), (4.,1.), (0.,1.),
              (2.,3.0), (2.,2.0)]
@@ -143,14 +145,12 @@ def VerticalTrussProblem():
 
     fext_bc = []
 
-    kin_output = KinematicOutput(dt)
-
-    DynamicExplicit.run(nodes, elements, materials, vel_ic, vel_bc, fext_bc, kin_output, dt=dt, t_end=5.0)
+    output = DynamicExplicit.run(nodes, elements, materials, vel_ic, vel_bc, fext_bc, dt, t_end, pp_dt)
 
     from pylab import plot, show
-    plot(kin_output.t, kin_output.u[:,11]+1)
-    plot(kin_output.t, kin_output.u[:,9]+2.)
-    plot(kin_output.t, kin_output.u[:,7]*0.5 + kin_output.u[:,5]*0.5 )
+    plot(output.t, output.u[:,11]+1)
+    plot(output.t, output.u[:,9]+2.)
+    plot(output.t, output.u[:,7]*0.5 + output.u[:,5]*0.5 )
 
     show()
 
@@ -160,9 +160,10 @@ def HorizontalTrussProblem():
     from mfpy.materials.linearelastic import LinearElastic
     from mfpy.dof import DOF
     from mfpy.boundcond import BC
-    from mfpy.postproc import KinematicOutput
 
     dt = 0.01
+    t_end = 5.0
+    pp_dt = dt
 
     nodes = [(0.,0.), (4.,0.), (4.,1.5), (0.,1.),
              (1.,2.0), (3.,2.0)]
@@ -180,15 +181,17 @@ def HorizontalTrussProblem():
 
     fext_bc = []
 
-    kin_output = KinematicOutput(dt)
-
-    DynamicExplicit.run(nodes, elements, materials, vel_ic, vel_bc, fext_bc, kin_output, dt=dt, t_end=10.)
+    output = DynamicExplicit.run(nodes, elements, materials, vel_ic, vel_bc, fext_bc, dt, t_end, pp_dt)
 
     from pylab import plot, show
-    plot(kin_output.t, kin_output.u[:,11]+1.0)
-    plot(kin_output.t, kin_output.u[:, 9]+1.0)
-    plot(kin_output.t, kin_output.u[:,7]*0.75 + (kin_output.u[:,5]+0.5)*0.25 )
-    plot(kin_output.t, kin_output.u[:,7]*0.25 + (kin_output.u[:,5]+0.5)*0.75 )
+    plot(output.t, output.u[:,11]+1.0)
+    plot(output.t, output.u[:, 9]+1.0)
+    plot(output.t, output.u[:,7]*0.75 + (output.u[:,5]+0.5)*0.25 )
+    plot(output.t, output.u[:,7]*0.25 + (output.u[:,5]+0.5)*0.75 )
+
+    from mfpy.postproc import vtk_write_output
+
+    vtk_write_output("C:/Users/Mohamed/Dropbox/COMMAS/thesis/contact/results","horiz-truss", nodes, elements, output, True)
 
     show()
 

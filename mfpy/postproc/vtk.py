@@ -7,9 +7,9 @@ from numpy import array, zeros, empty
 from evtk.vtk import *
 
 from mfpy.elements import Truss, Quad
+from mfpy.assembly import calculate_nds, calculate_ndm, calculate_edm, calculate_ntdm
 
-
-def vtk_write_output(results_root, name,  enm, nodes, elements, kin_out, overwrite = False):
+def vtk_write_output(results_root, name, nodes, elements, output, overwrite = False):
     """Write given output as a VTK group.
 
     A VTK group is a group of VTK files that represents transient data.
@@ -38,14 +38,21 @@ def vtk_write_output(results_root, name,  enm, nodes, elements, kin_out, overwri
     grp_path = path.join(folder_path, grp_name)
     grp = VtkGroup(grp_path)
 
+    # Create mappings
+    enm = [e.enm for e in elements]
+    elem_types = [type(e) for e in elements]
+    nds = calculate_nds(enm, elem_types, len(nodes))
+    ndm = calculate_ndm(nds)
+    ntdm = calculate_ntdm(nds, enm, ndm)
+
     # Create a file for every time-step
-    for t in kin_out.t:
+    for t_id, t in enumerate(output.t):
         file_name = name + "-%s" % t
         file_path = path.join(folder_path, file_name)
 
         # Create file, add it to the group
         f = VtkFile(file_path, VtkUnstructuredGrid)
-        grp.addFile(file_path, t)
+        grp.addFile(file_path+".vtu", t)
 
         num_nodes = len(nodes)
         num_elements = len(elements)
@@ -55,6 +62,10 @@ def vtk_write_output(results_root, name,  enm, nodes, elements, kin_out, overwri
 
         node_data = __vtk_add_nodes_to_file(f, nodes)
 
+        f.openElement("PointData")
+        u_data = __vtk_add_vector_data_to_file(f, ntdm, output.u[t_id,:], "displacement")
+        f.closeElement("PointData")
+
         # Add elements
         conn_data, offset_data, type_data = __vtk_add_elements_to_file(f, enm, elements)
 
@@ -62,6 +73,7 @@ def vtk_write_output(results_root, name,  enm, nodes, elements, kin_out, overwri
         f.closeElement("UnstructuredGrid")
 
         f.appendData(node_data)
+        f.appendData(u_data)
         f.appendData(conn_data)
         f.appendData(offset_data)
         f.appendData(type_data)
@@ -146,6 +158,7 @@ def __vtk_add_nodes_to_file(f, nodes):
 def __vtk_get_cell_type(element_type):
     """Map mfpy element type to VTK cell type"""
 
+    if (element_type == Truss): return VtkLine.tid
     if (element_type == Quad): return VtkQuad.tid
 
 
@@ -193,21 +206,77 @@ def __vtk_add_elements_to_file(f, enm, elements):
 
     return conn_data, offset_data, type_data
 
+
+def __vtk_add_vector_data_to_file(f, dof_map, vec, name):
+    """Adds vector data to file, mapping from a given vector vector
+
+    Parameters
+    ----------
+    f : VtkFile
+        File to edit
+    dof_map : list of array
+        Some mapping from node ID to global DOFs
+    vec : array
+        Global array
+    name : str
+        Name to use for data in file
+
+    Returns
+    -------
+    node_data : tuple of array
+        The data that needs to be appended at the end of the file
+    """
+
+    num_nodes = len(dof_map)
+
+    x_map = [dof_map[node_id][0] for node_id in range(num_nodes)]
+    y_map = [dof_map[node_id][1] for node_id in range(num_nodes)]
+
+    x = vec[x_map]
+    y = vec[y_map]
+    z = y * 0
+
+    data = (x,y,z)
+    f.addData(name, data)
+
+    return data
+
+
 def test():
     from os import sep
     from mfpy.elements import Quad
-    from mfpy.postproc import KinematicOutput
+    from mfpy.postproc import TemporalVectorOutput
+    from mfpy.assembly import calculate_nds, calculate_ndm, calculate_edm, calculate_ntdm
 
     result_path = path.join("C:",sep,"Users","Mohamed","Dropbox","COMMAS","thesis","contact","results")
 
     enm = [[0,1,2,3]]
     nodes = [[0.,0.],[1.,0.],[1.,1.],[0.,1.]]
     elements = [Quad(nodes, [0,1,2,3], None, thickness=10)]
-    kin_out = KinematicOutput(0.1)
 
-    kin_out.add(0, None, None, None)
 
-    vtk_write_output(result_path, "tests",  enm, nodes, elements, kin_out, overwrite=True)
+    elem_types = [type(e) for e in elements]
+    nds = calculate_nds(enm, elem_types, len(nodes))
+    ndm = calculate_ndm(nds)
+    edm = calculate_edm(enm, ndm)
+    ntdm = calculate_ntdm(nds, enm, ndm)
+
+    u_total = array([0,0,
+                     1,0,
+                     1,1,
+                     0,1])
+
+    output = TemporalVectorOutput(0.1, ["u"])
+
+    output.add(0.0, u = u_total*0)
+    output.add(0.1, u = u_total*0.1)
+    output.add(0.2, u = u_total*0.2)
+    output.add(0.3, u = u_total*0.3)
+    output.add(0.4, u = u_total*0.4)
+    output.add(0.5, u = u_total*0.5)
+    output.finalize()
+
+    vtk_write_output(result_path, "tests", nodes, elements, output, overwrite=True)
 
 if __name__ == "__main__":
     test()
