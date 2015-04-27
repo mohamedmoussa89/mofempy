@@ -34,8 +34,8 @@ class Truss(metaclass=Element):
 
     @staticmethod
     def get_local_coord_on_edge(edge, xi):
-        if edge == (0,1): return xi
-        if edge == (1,0): return 1-xi
+        if edge == (0,1): return (xi,)
+        if edge == (1,0): return (1-xi,)
         raise ValueError("Invalid edge provided")
 
 
