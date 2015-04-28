@@ -1,4 +1,5 @@
 __author__ = 'Mohamed Moussa'
 
-from mfpy.elements.truss import Truss
-from mfpy.elements.quad import Quad
+from .truss import Truss
+from .quad import Quad
+from .pointmass import PointMass

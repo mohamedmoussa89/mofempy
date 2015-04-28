@@ -6,7 +6,7 @@ from os import path, makedirs
 from numpy import array, zeros, empty
 from evtk.vtk import *
 
-from mfpy.elements import Truss, Quad
+from mfpy.elements import PointMass, Truss, Quad
 from mfpy.assembly import calculate_nds, calculate_ndm, calculate_edm, calculate_ntdm
 
 def vtk_write_output(results_root, name, nodes, elements, output, overwrite = False):
@@ -158,8 +158,12 @@ def __vtk_add_nodes_to_file(f, nodes):
 def __vtk_get_cell_type(element_type):
     """Map mfpy element type to VTK cell type"""
 
+    if (element_type == PointMass): return VtkVertex.tid
     if (element_type == Truss): return VtkLine.tid
     if (element_type == Quad): return VtkQuad.tid
+
+    # Empty cell type
+    return 0
 
 
 def __vtk_add_elements_to_file(f, enm, elements):
