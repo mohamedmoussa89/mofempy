@@ -9,9 +9,9 @@ New York, Oxford University Press
 from numpy import dot, zeros, empty
 from numpy.linalg import solve
 
-from .contactsearch import get_penetrating_active_nodes
+from .nodesegmentpair import get_penetrating_active_pairs
 
-def calculate_cdm(active_list, ntdm):
+def calculate_cdm(pen_active_list, ntdm):
     """Contact Contact DOF map
 
     Maps global DOFs to 'contact DOFs'. These DOFs are coupled due to contact and
@@ -19,8 +19,8 @@ def calculate_cdm(active_list, ntdm):
 
     Parameters
     ----------
-    active_list : list of NodeSegmentPair
-        List of all NodeSegmentPairs that are currently considered active
+    pen_active_list : list of NodeSegmentPair
+        List of all NodeSegmentPairs that are currently *penetrating*
     ntdm : list of array
         Node translational DOF map
 
@@ -31,7 +31,7 @@ def calculate_cdm(active_list, ntdm):
     """
 
     # Filter out non-penetrating nodes
-    active_list = get_penetrating_active_nodes(active_list)
+    active_list = get_penetrating_active_pairs(pen_active_list)
 
     contact_dofs = set()
     for pair in active_list:
@@ -43,7 +43,7 @@ def calculate_cdm(active_list, ntdm):
 
     return cdm
 
-def contact_explicit_implicit(active_list, ntdm, cdm, elements, dt, M, R, v, a):
+def contact_explicit_implicit(active_list, ntdm, elements, dt, M, R, v, a):
     """Modify the acceleration vector to account for contact using the explicit-implicit algorithm.
 
     Parameters
@@ -78,14 +78,16 @@ def contact_explicit_implicit(active_list, ntdm, cdm, elements, dt, M, R, v, a):
     Here we follow the explicit-implicit split described in section 9.3
     """
 
-    active_list = get_penetrating_active_nodes(active_list)
+    # Filter the active list and build the contact DOF map
+    active_list = get_penetrating_active_pairs(active_list)
+    cdm = calculate_cdm(active_list, ntdm)
 
-    # Number of lagrange multipliers
+    # Number of lagrange multipliers (forces)
     num_lm = len(active_list)
     if (num_lm) == 0: return a
 
     # Number of contact DOFs
-    num_cd = len(cdm.keys())
+    num_cd = len(cdm)
     if num_cd == 0: return a
 
     # Weight matrix

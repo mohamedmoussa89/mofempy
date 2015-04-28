@@ -140,7 +140,7 @@ def calculate_defence_node_residual(phi, target_node_masses, defence_node_mass, 
     return sum( [defence_node_mass * p * tnr / tnm for (p,tnr,tnm) in zip(phi, target_node_R, target_node_masses)] )
 
 
-def contact_defence_node(active_list, ntdm, elements, M, R, v, dt):
+def contact_defence_node(active_list, ntdm, elements, M, R, v, dt, t):
     """Calculate the global contact force vector using the defence node algorithm
 
     Normal contact only (no frictional effects).
@@ -176,7 +176,7 @@ def contact_defence_node(active_list, ntdm, elements, M, R, v, dt):
 
     for pair in active_list:
 
-        # If no penetration, zero out contact force
+        # If no penetration, zero out contact force and move to next pair
         if (pair.d_min > 0):
             pair.contact_force = 0
             continue
@@ -202,10 +202,9 @@ def contact_defence_node(active_list, ntdm, elements, M, R, v, dt):
         target_nodes_R =  [ R[ntdm[nid]] for nid in pair.global_seg ]
         target_nodes_v =  [ v[ntdm[nid]] for nid in pair.global_seg ]
 
-        # hitting and defence residuals in normal direction
+        # Hitting and defence residuals in normal direction
         hitting_node_R = dot(R[ntdm[pair.node_id]], pair.normal)
-        defence_node_R = dot(calculate_defence_node_residual(phi, target_node_masses, defence_node_mass, target_nodes_R),
-                             pair.normal)
+        defence_node_R = dot(calculate_defence_node_residual(phi, target_node_masses, defence_node_mass, target_nodes_R),pair.normal)
 
         # Hitting and defence node velocities in normal direction
         hitting_node_v = dot(v[ntdm[pair.node_id]], pair.normal)
@@ -225,15 +224,19 @@ def contact_defence_node(active_list, ntdm, elements, M, R, v, dt):
         # Equation (9.5.35)
         delta_f = M1 * M2 * (  F2/M2 - F1/M1 + v2/dt - v1/dt - p/(dt*dt) ) / (M1 + M2)
 
-        pair.contact_force += -delta_f
+        try: pair.contact_force += -delta_f
+        except AttributeError: pair.contact_force = -delta_f
 
         if (pair.contact_force < 0):
             pair.contact_force = 0
 
+        print(pair.contact_force)
+
         # Distribute to contact force vector
+        # Equations (9.5.8) and (9.5.17)
         fcont[ ntdm[pair.node_id] ] = pair.contact_force*pair.normal
-        for i, node_id in enumerate(pair.segment):
-            fcont[ntdm[node_id]] =  - target_node_masses[i] * phi[i]/phi_bar/defence_node_mass * pair.contact_force * pair.normal
+        for i, node_id in enumerate(pair.global_seg):
+            fcont[ntdm[node_id]] +=  - target_node_masses[i] * phi[i]/phi_bar/defence_node_mass * pair.contact_force * pair.normal
 
 
     return fcont
