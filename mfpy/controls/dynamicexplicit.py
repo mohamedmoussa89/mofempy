@@ -18,9 +18,12 @@ class DynamicExplicit(metaclass=Control):
         from mfpy.boundcond import generate_bc_pairs, apply_bc_pairs_on_vec
 
         from mfpy.topology import find_boundary_segment_map, find_boundary_nodes
+
+
+
         from mfpy.contact import find_new_active_nodes, update_active_node_distances, remove_inactive_nodes
-        from mfpy.contact import calculate_contact_accel_ei, calculate_cdm
-        from mfpy.contact import calculate_contact_force_dna
+        from mfpy.contact import contact_explicit_implicit, calculate_cdm
+        from mfpy.contact import contact_defence_node
 
         from numpy import zeros
 
@@ -93,21 +96,21 @@ class DynamicExplicit(metaclass=Control):
             assemble_internal_force(enm, edm, nodes_curr, elements, u, fint)
 
             d_threshold = 2*max(abs(v))*dt
-            active_list = update_active_node_distances(active_list, nodes_curr, elements)
-            active_list = find_new_active_nodes(active_list, nodes_curr, elements, boundary_nodes, boundary_segment_map, d_threshold)
+            active_list = update_active_node_distances(active_list, nodes_curr)
+            active_list = find_new_active_nodes(active_list, nodes_curr, boundary_nodes, boundary_segment_map, d_threshold)
             active_list = remove_inactive_nodes(active_list, d_threshold)
 
             # CONTACT - Defence node algorithm
-            fcont = 0*calculate_contact_force_dna(active_list, ntdm, elements, M, R, v, dt, t)
+            #fcont = 0*contact_defence_node(active_list, ntdm, elements, M, R, v, dt, t)
 
-            R = (fext - fint + fcont)
+            R = (fext - fint)# + fcont)
             a = 1/M * R
 
             # CONTACT - Calculate contact DOF map
             cdm = calculate_cdm(active_list, ntdm)
 
             # CONTACT - Modify acceleration using Explicit-Implicit algorithm
-            a = calculate_contact_accel_ei(active_list, enm, ntdm, cdm, elements, d_threshold, dt, M, R, v, a)
+            a = contact_explicit_implicit(active_list, enm, ntdm, cdm, elements, d_threshold, dt, M, R, v, a)
 
             # ------------------------------------------------------------------------------------------
 

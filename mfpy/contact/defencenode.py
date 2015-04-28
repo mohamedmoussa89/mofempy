@@ -140,7 +140,7 @@ def calculate_defence_node_residual(phi, target_node_masses, defence_node_mass, 
     return sum( [defence_node_mass * p * tnr / tnm for (p,tnr,tnm) in zip(phi, target_node_R, target_node_masses)] )
 
 
-def contact_dn_calculate_contact_force(active_list, ntdm, elements, M, R, v, dt):
+def contact_defence_node(active_list, ntdm, elements, M, R, v, dt):
     """Calculate the global contact force vector using the defence node algorithm
 
     Normal contact only (no frictional effects).
