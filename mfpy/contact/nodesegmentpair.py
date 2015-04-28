@@ -5,47 +5,6 @@ from numpy.linalg import norm
 
 from mfpy.geometry import project_node_on_segment, calculate_segment_normal
 
-
-def find_closest_boundary_node(nodes, search_node_id, node_ids):
-    """Find closest boundary node to a given  node
-
-    Parameters
-    ----------
-    nodes : list of array
-        List of node positions
-    search_node_id : int
-        ID of node to use for search
-    node_ids : list of int
-        List of node IDs that will be searched against
-
-    Returns
-    ------
-    closest_node : int
-        ID of node closest to the search node
-    d_min : float
-        Distance to the closest node
-    """
-
-    search_node = nodes[search_node_id]
-
-    d_min = inf
-    closest_node = None
-
-    # Check against all other nodes
-    for id in node_ids:
-        if (id == search_node_id): continue
-
-        other_node = nodes[id]
-
-        delta = other_node-search_node
-        d = norm(delta)
-        if (d < d_min):
-            d_min = d
-            closest_node = id
-
-    return (closest_node, d_min)
-
-
 class NodeSegmentPair(object):
     """Container that describes a node/segment pair and the projection of the node on to the segment.
 
@@ -78,7 +37,7 @@ class NodeSegmentPair(object):
         self.global_seg = global_seg
 
 
-def find_closest_segment_projection(nodes, node_id, segment_map, only_positive=True):
+def find_closest_segment(nodes, node_id, segment_map, only_positive=True):
     """Find closest projected point to a given node on the boundary segments given
 
     Parameters
@@ -113,7 +72,7 @@ def find_closest_segment_projection(nodes, node_id, segment_map, only_positive=T
 
         # Find projection on the segment
         xi, p = project_node_on_segment(search_node, seg_pos)
-        if not (0 <= xi <= 1): continue
+        if not (0 < xi < 1): continue
 
         # Calculate normal gap distance
         n = calculate_segment_normal(seg_pos)[0:2]
@@ -130,7 +89,7 @@ def find_closest_segment_projection(nodes, node_id, segment_map, only_positive=T
     return found
 
 
-def find_new_active_nodes(active_list, nodes, node_ids, segment_map, threshold):
+def find_new_ns_pairs(ns_pairs, nodes, node_ids, segment_map, threshold):
     """Finds nodes that may collide in the future.
 
     Nodes that are close to a segment are considered 'active nodes'. These active nodes are
@@ -155,21 +114,22 @@ def find_new_active_nodes(active_list, nodes, node_ids, segment_map, threshold):
         Updated active list
     """
 
-    # Find only inactive nodes - no point in checking active nodes
-    active_nodes = set([pair.node_id for pair in active_list])
+    # Search only in inactive nodes
+    active_nodes = set([pair.node_id for pair in ns_pairs])
     inactive_nodes = set(node_ids) - active_nodes
 
+    # Check for node-segment pairs first
     for node_id in inactive_nodes:
-        node_seg_proj = find_closest_segment_projection(nodes, node_id, segment_map)
+        pair = find_closest_segment(nodes, node_id, segment_map)
 
         # If close enough, add to active set
-        if node_seg_proj.d_min <= threshold:
-            active_list.append( node_seg_proj )
+        if pair.d_min <= threshold:
+            ns_pairs.append(pair)
 
-    return active_list
+    return ns_pairs
 
 
-def update_active_node_distances(active_list, nodes):
+def update_ns_pairs(ns_pairs, nodes):
     """Updates current active node-segment pairs
 
     Updates the minimum distance, projection point and normal
@@ -187,7 +147,7 @@ def update_active_node_distances(active_list, nodes):
         Updated active list
     """
 
-    for pair in active_list:
+    for pair in ns_pairs:
         seg_pos = [nodes[i] for i in pair.global_seg]
         node_pos = nodes[pair.node_id]
 
@@ -199,10 +159,10 @@ def update_active_node_distances(active_list, nodes):
         delta = node_pos - pair.proj
         pair.d_min = dot(pair.normal, delta)
 
-    return active_list
+    return ns_pairs
 
 
-def remove_inactive_nodes(active_list, threshold):
+def remove_ns_pairs(ns_pairs, threshold):
     """Makes nodes inactive if they move away from the segment based on given threshold
 
     An active pair is made inactive if the distance has increased beyond the threshold or the projection
@@ -220,10 +180,9 @@ def remove_inactive_nodes(active_list, threshold):
     active_list : list of NodeSegmentPair
         Updated active list
     """
-    return [pair for pair in active_list if (pair.d_min < threshold) and (0 <= pair.xi <= 1)]
+    return [pair for pair in ns_pairs if (pair.d_min < threshold) and (0 < pair.xi < 1)]
 
 
-def get_penetrating_active_nodes(active_list):
-    """ Returns only the NodeSegmentPairs where the node is penetrating the segment
-    """
+def get_penetrating_active_pairs(active_list):
+    """ Returns only the NodeSegmentPairs where the node is penetrating the segment"""
     return [ap for ap in active_list if ap.d_min <= 0]
