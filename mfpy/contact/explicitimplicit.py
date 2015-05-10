@@ -2,8 +2,7 @@
 
 Reference
 ---------
-Zhong, ZH. (1993) Finite element procedures for contact-impact problems,
-New York, Oxford University Press
+Zhong, ZH. (1993) Finite element procedures for contact-impact problems
 """
 
 from numpy import dot, zeros, empty
@@ -15,15 +14,17 @@ from mfpy.contact.nodesegmentpair import NodeSegmentPair
 def calculate_cdm(contact_pairs, ntdm, snpm):
     """Contact Contact DOF map
 
-    Maps global DOFs to 'contact DOFs'. These DOFs are coupled due to contact and
+    Maps global DOFs to local 'contact DOFs'. These DOFs are coupled due to contact and
     are solved for implicitly
 
     Parameters
     ----------
     pen_active_list : list of NodeSegmentPair
         List of all NodeSegmentPairs that are currently *penetrating*
-    ntdm : list of array
+    ntdm : array
         Node translational DOF map
+    snpm : array
+        Segment to Node Pair map
 
     Returns
     -------
@@ -55,10 +56,13 @@ def contact_explicit_implicit(contact_pairs, ntdm, snpm, sem, elements, dt, M, R
 
     Parameters
     ----------
-    active_list : list of NodeSegmentPair
-        List of all NodeSegmentPairs that are currently considered active
+    contact_pairs : list of NodeNodePair/NodeSegmentPair
     ntdm : list of array
         Node translational DOF map
+    snpm : array
+        Segment Node Pair map
+    sem : array
+        Segment Element Map
     elements : list of Element
         List of elements to consider
     dt : float

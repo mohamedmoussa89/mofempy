@@ -1,7 +1,7 @@
 from numpy import inf, row_stack, array
 
 class TemporalOutput:
-    """Container to store vector values over multiple time-steps.
+    """Container to store values over multiple time-steps.
 
     Attributes
     ----------
@@ -26,7 +26,7 @@ class TemporalOutput:
 
 
     def __init__(self, dt, data_names):
-        """Container to store vector values over multiple time-steps.
+        """Container to store values over multiple time-steps.
 
         Parameters
         ----------
@@ -46,7 +46,7 @@ class TemporalOutput:
 
 
     def add(self, t, **data):
-        """Add new vector to each of the registered names for the given timestamp.
+        """Add new value to each of the registered names for the given timestamp.
 
         Attributes
         ----------
@@ -68,7 +68,7 @@ class TemporalOutput:
 
 
     def finalize(self):
-        """Signal end of any more data being added. Every list of scalars/arrays is converted to a single array.
+        """Signal end of any more data being added.
 
         Notes
         -----
@@ -78,18 +78,3 @@ class TemporalOutput:
         self.t = array(self.t)
         for name in self.data_names:
             self.__dict__[name] = row_stack(self.__dict__[name])
-
-
-def test():
-    dt = 0.1
-    out = TemporalOutput(dt, ["u","v","a"])
-
-    t = 0
-    out.add(t, u=[], v=[], a=[])
-    print(out.__dict__)
-
-if __name__ == "__main__":
-    test()
-
-
-

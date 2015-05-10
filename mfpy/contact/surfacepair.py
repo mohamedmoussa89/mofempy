@@ -1,5 +1,3 @@
-from numpy import empty
-
 class SurfacePair(object):
     """
     Data structure describing a pair of surfaces that may contact each other.

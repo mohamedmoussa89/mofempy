@@ -1,3 +1,7 @@
+"""
+Contact Module
+"""
+
 from .surfacepair import create_surface_pairs
 
 from .defencenode import contact_defence_node

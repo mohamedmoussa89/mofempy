@@ -1,7 +1,3 @@
-__author__ = 'Mohamed Moussa'
-
-from numpy import array
-
 from mfpy.materials.material import Material
 from mfpy.tensor import trace, I, IoI, II
 

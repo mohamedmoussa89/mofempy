@@ -1,6 +1,11 @@
 """
-Bucket Search
-Based on Yastrebov Section 3.3
+Bucket sort data structure and search procedures
+
+See section 3.3 of reference for details.
+
+Reference
+---------
+Yastrebov, VA. (2013) Numerical Methods in Contact Mechanics
 """
 
 from numpy import array, zeros, sqrt, empty, inf, dot, all, any
@@ -55,6 +60,9 @@ class BucketGrid(object):
 
 
 def distribute_nodes(grid, node_positions, node_ids):
+    """
+    Distributes nodes into cells for a given grid.
+    """
     cells = zeros((grid.num_cells, grid.MAX_ELEMENTS_PER_CELL), dtype=int)-1
     cells_count = zeros(grid.num_cells, dtype=int)
     for node_id in node_ids:
@@ -66,6 +74,9 @@ def distribute_nodes(grid, node_positions, node_ids):
 
 
 def distribute_segments(grid, segment_positions, segment_ids):
+    """
+    Distributes segments into cells for a given grid, based on the segments node positions.
+    """
     cells = zeros((grid.num_cells, grid.MAX_ELEMENTS_PER_CELL), dtype=int)-1
     cells_count = zeros(grid.num_cells, dtype=int)
     for segment_id in segment_ids:
@@ -80,6 +91,9 @@ def distribute_segments(grid, segment_positions, segment_ids):
 
 
 def get_cell_number(grid, pos):
+    """
+    Returns a positions corresponding cell index in a grid.
+    """
     x1,y1,_,_ = grid.spatial_bb
     x,y = pos
     cell_dx, cell_dy = grid.cell_size
@@ -87,6 +101,9 @@ def get_cell_number(grid, pos):
 
 
 def calculate_cell_bb(grid, cell_id):
+    """
+    Calculates a cells bounding box.
+    """
     x1,y1,_,_ = grid.spatial_bb
     ix = cell_id % grid.cell_count[0]
     iy = int(cell_id / grid.cell_count[0])
@@ -97,7 +114,11 @@ def calculate_cell_bb(grid, cell_id):
     return [min_x, min_y, max_x, max_y]
 
 
-def get_cell_neighbours(grid, cell_id):
+def get_cell_neighbourhood(grid, cell_id):
+    """
+    Determines 'neighbourhood' of cells around a particular cell, including the cell itseld.
+    """
+    # Cells per row
     cpr = grid.cell_count[0]
 
     # Immediate neighbours
@@ -119,7 +140,7 @@ def get_cell_neighbours(grid, cell_id):
 
 def find_new_contact_pairs(nsm, sem, grid, node_positions, elements, segment_positions, segment_normals):
     """
-    Pairs slave nodes with the closest node or segment
+    Finds node-node or node-segment pairs that have penetrated (i.e. are in contact)
     """
 
     contact_pairs = []
@@ -140,8 +161,8 @@ def find_new_contact_pairs(nsm, sem, grid, node_positions, elements, segment_pos
 
             segments_checked = set()
 
-            # Neighbour cells
-            neighbours = get_cell_neighbours(grid, slave_cell_id)
+            # Cell neighbourhood
+            neighbours = get_cell_neighbourhood(grid, slave_cell_id)
             for master_cell_id in neighbours:
                 master_cell_bb = calculate_cell_bb(grid, master_cell_id)
 
@@ -275,29 +296,22 @@ def one_pass_search(nsm, snpm, sem, ssm, contact_pairs, node_positions, elements
                                           nsm, sem, ssm,
                                           node_positions, elements,
                                           segment_positions, segment_normals)
-    ignore_slave_nodes = set([pair.slave_id for pair in remaining])
+    ignore = set([pair.slave_id for pair in remaining])
 
     contact_pairs = []
 
     for pair in surface_pairs:
-        # First pass to find new nodes, ignoring slave nodes found previously
-        slave_nodes = [slave_id for slave_id in pair.nodes_b if slave_id not in ignore_slave_nodes]
+
+        # Determine which slave nodes to search for
+        slave_nodes = [slave_id for slave_id in pair.nodes_b if slave_id not in ignore]
+
         if slave_nodes:
             grid = BucketGrid(node_positions, segment_positions,
                               pair.nodes_a, slave_nodes,
                               pair.segments_a)
+
             contact_pairs.extend(find_new_contact_pairs(nsm, sem, grid,
                                                         node_positions, elements,
                                                         segment_positions, segment_normals))
-
-    if (contact_pairs or remaining):
-        print("TIME t =", t)
-        if (contact_pairs):
-            print("NEW PAIRS")
-            for pair in contact_pairs: print(pair)
-        if (remaining):
-            print("REMAINING PAIRS")
-            for pair in remaining: print(pair)
-        print("")
 
     return contact_pairs + remaining

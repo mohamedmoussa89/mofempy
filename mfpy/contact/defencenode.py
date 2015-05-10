@@ -2,8 +2,7 @@
 
 Reference
 ---------
-Zhong, ZH. (1993) Finite element procedures for contact-impact problems,
-New York, Oxford University Press
+Zhong, ZH. (1993) Finite element procedures for contact-impact problems
 """
 
 from numpy import array, zeros, dot, vstack, newaxis, sum as arraysum
@@ -25,7 +24,7 @@ def contact_defence_node(contact_pairs, enm, ntdm, sem, elements, M, R, v, dt, t
         Element Node Map
     ntdm : array
         Node Translational DOF map
-    sem :
+    sem : array
         Segment Element Map
     elements : list of Element
         List of elements to consider

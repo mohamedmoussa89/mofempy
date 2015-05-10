@@ -1,4 +1,3 @@
-__author__ = 'Mohamed Moussa'
-
+"""Empty control class"""
 class Control(type):
     num_params = 0

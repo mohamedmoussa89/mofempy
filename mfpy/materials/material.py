@@ -1,5 +1,3 @@
-__author__ = 'Mohamed Moussa'
-
 class Material(type):
     param_names = []
 

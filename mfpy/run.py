@@ -9,7 +9,7 @@ from mfpy.controls import DynamicExplicit
 def BlockProblem():
 
 
-    dt = 1e-2
+    dt = 1e-3
     t_end = 2.0
     pp_dt = dt
 
