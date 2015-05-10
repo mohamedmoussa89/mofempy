@@ -1,12 +1,22 @@
-__author__ = 'Mohamed Moussa'
-
-from numpy import array, empty, zeros, hstack
+from numpy import array, empty, zeros, vstack
 from numpy.linalg import det, inv as inverse
 
 from mfpy.dof import DOFSet
 
+
+def calculate_enm(elements):
+    """
+    Element Node Map
+    Maps element ID, local node ID -> global node ID
+    """
+    return [e.enm for e in elements]
+
+
 def calculate_nds(elem_node_maps, elem_types, num_nodes=None):
-    """Calculate DOF Set for every node in the element node map (ENM)"""
+    """
+    Node DOF Set
+    Calculate DOF Set for every node
+    """
     if not num_nodes:
         num_nodes = max([max(nodes) for nodes in elem_node_maps]) + 1
     nds = [DOFSet() for i in range(num_nodes)]
@@ -78,7 +88,7 @@ def scatter_element_vector(edm, local_vec, global_vec):
 
 
 def updated_node_positions(ntdm, nodes_prev, u):
-    return [n + u[ntdm[nid]] for (nid,n) in enumerate(nodes_prev)]
+    return vstack([n + u[ntdm[nid]] for (nid,n) in enumerate(nodes_prev)])
 
 
 def assemble_lumped_mass(edm, elements, global_M):

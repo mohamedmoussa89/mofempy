@@ -9,6 +9,8 @@ from numpy.linalg import det, inv as inverse
 from mfpy.elements.element import Element
 from mfpy.dof import DOF, DOFSet
 
+from mfpy.segment import project_node_on_segment
+
 class Quad(metaclass=Element):
     """2D Quadrilateral Element"""
     dof_sig = [DOFSet(DOF.X, DOF.Y),
@@ -41,15 +43,43 @@ class Quad(metaclass=Element):
                             (1+xi)*(1+eta),
                             (1-xi)*(1+eta)])
 
+
+    def get_segment_local_id(self, node_pair):
+        """
+        Given a pair of global node IDs, determine which segment this corresponds to
+        """
+        if node_pair == (self.enm[0], self.enm[1]): return 0
+        if node_pair == (self.enm[1], self.enm[2]): return 1
+        if node_pair == (self.enm[2], self.enm[3]): return 2
+        if node_pair == (self.enm[3], self.enm[0]): return 3
+        return None
+
+
     @staticmethod
-    def get_local_coord_on_edge(edge, xi):
+    def get_segment_local_nodes(element_segment_id):
+        """
+        Given a segment ID, return the (local) node pair for that segment
+        """
+        if element_segment_id == 0: return (0,1)
+        if element_segment_id == 1: return (1,2)
+        if element_segment_id == 2: return (2,3)
+        if element_segment_id == 3: return (3,0)
+        raise ValueError("Unknown segment ID (%d) for Quad element." % element_segment_id)
+
+
+    @staticmethod
+    def project_node_on_segment(element_segment_id, segment_position, node_position):
+        """
+        Projects a node on to the specified segment
+        """
+        xi, proj = project_node_on_segment(node_position, segment_position)
         xi = 2*xi - 1
-        eta = xi
-        if edge == (0,1): return ( xi,  -1)
-        if edge == (1,2): return (  1, eta)
-        if edge == (2,3): return (-xi,   1)
-        if edge == (3,0): return ( -1,-eta)
-        raise ValueError("Invalid edge provided")
+        if (element_segment_id == 0): return array((xi,  -1)), proj
+        if (element_segment_id == 1): return array((  1, xi)), proj
+        if (element_segment_id == 2): return array((-xi,  1)), proj
+        if (element_segment_id == 3): return array(( -1,-xi)), proj
+        raise ValueError("Invalid segment ID provided")
+
 
     @staticmethod
     def calc_dNdXi(xi, eta):
@@ -130,6 +160,7 @@ class Quad(metaclass=Element):
         X = hstack(self.nodes)
 
         fint = zeros(8)
+
         for (w, xi) in Quad.gauss_points:
             w1, w2  = w
             xi, eta = xi
@@ -141,11 +172,39 @@ class Quad(metaclass=Element):
             detJ  = det(J)
 
             epsilon = B.dot(u)
-            sigma = mat.calc_stress_2d(epsilon)
+            sigma, C = mat.calc_2d(epsilon)
 
             fint += w1*w2*B.transpose().dot(sigma)*h*detJ
 
         return fint
+
+
+    def calc_linear_stiffness(self, nodes_curr, u):
+        from numpy import hstack
+
+        h = self.params["thickness"]
+        mat = self.mat
+        X = hstack(self.nodes)
+
+        K = zeros((8,8))
+
+        for (w, xi) in Quad.gauss_points:
+            w1, w2  = w
+            xi, eta = xi
+
+            dNdXi = Quad.calc_dNdXi(xi, eta)
+            J     = Quad.calc_J(X, dNdXi)
+            dNdX  = Quad.calc_dNdX(J, dNdXi)
+            B     = Quad.calc_B(dNdX)
+            detJ  = det(J)
+
+            epsilon = B.dot(u)
+            sigma, C = mat.calc_2d(epsilon)
+
+            K += w1*w2*B.transpose().dot(C).dot(B)*h*detJ
+
+        return K
+
 
 
 def test():
@@ -158,13 +217,17 @@ def test():
     elem = Quad(nodes, enm, mat, thickness=1)
 
     # Test internal force
-    u = array([0,0, 0,0, 0,-1, 0,-1])
-    fint = elem.calc_internal_force(u)
+    u = array([-1,0,
+               -1,0,
+               1,0,
+               1,0])
+    fint,K = elem.calc_internal_force([], u)
     print(fint)
+    print(K.dot(u))
 
     # Test lumped mass matrix
     M = elem.calc_lumped_mass()
-    print(M)
+    #print(M)
 
 if __name__ == "__main__":
     test()

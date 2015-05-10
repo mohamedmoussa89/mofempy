@@ -9,9 +9,10 @@ New York, Oxford University Press
 from numpy import dot, zeros, empty
 from numpy.linalg import solve
 
-from .nodesegmentpair import get_penetrating_active_pairs
+from mfpy.contact.nodenodepair import NodeNodePair
+from mfpy.contact.nodesegmentpair import NodeSegmentPair
 
-def calculate_cdm(pen_active_list, ntdm):
+def calculate_cdm(contact_pairs, ntdm, snpm):
     """Contact Contact DOF map
 
     Maps global DOFs to 'contact DOFs'. These DOFs are coupled due to contact and
@@ -30,20 +31,26 @@ def calculate_cdm(pen_active_list, ntdm):
         Contact DOF map
     """
 
-    # Filter out non-penetrating nodes
-    active_list = get_penetrating_active_pairs(pen_active_list)
-
     contact_dofs = set()
-    for pair in active_list:
-        contact_dofs.update(ntdm[pair.node_id])
-        for node in pair.global_seg:
-            contact_dofs.update(ntdm[node])
+    for pair in contact_pairs:
+        # Slave node DOFs
+        contact_dofs.update(ntdm[pair.slave_id])
 
+        # Master node DOFs
+        if isinstance(pair, NodeNodePair):
+            contact_dofs.update(ntdm[pair.master_id])
+
+        # Master segment DOFs
+        elif isinstance(pair, NodeSegmentPair):
+            for node in snpm[pair.master_id]:
+                contact_dofs.update(ntdm[node])
+
+    # Assign contact DOFs
     cdm = {j:i for i,j in enumerate(sorted(contact_dofs))}
 
     return cdm
 
-def contact_explicit_implicit(active_list, ntdm, elements, dt, M, R, v, a):
+def contact_explicit_implicit(contact_pairs, ntdm, snpm, sem, elements, dt, M, R, v, a):
     """Modify the acceleration vector to account for contact using the explicit-implicit algorithm.
 
     Parameters
@@ -52,8 +59,6 @@ def contact_explicit_implicit(active_list, ntdm, elements, dt, M, R, v, a):
         List of all NodeSegmentPairs that are currently considered active
     ntdm : list of array
         Node translational DOF map
-    cdm : dict int -> int
-        Contact DOF map
     elements : list of Element
         List of elements to consider
     dt : float
@@ -78,12 +83,13 @@ def contact_explicit_implicit(active_list, ntdm, elements, dt, M, R, v, a):
     Here we follow the explicit-implicit split described in section 9.3
     """
 
+    contact_pairs = [pair for pair in contact_pairs if pair.d_min < 0]
+
     # Filter the active list and build the contact DOF map
-    active_list = get_penetrating_active_pairs(active_list)
-    cdm = calculate_cdm(active_list, ntdm)
+    cdm = calculate_cdm(contact_pairs, ntdm, snpm)
 
     # Number of lagrange multipliers (forces)
-    num_lm = len(active_list)
+    num_lm = len(contact_pairs)
     if (num_lm) == 0: return a
 
     # Number of contact DOFs
@@ -102,16 +108,11 @@ def contact_explicit_implicit(active_list, ntdm, elements, dt, M, R, v, a):
     # Couple mass vector
     M_cpl = empty(num_cd)
 
-    for pair_id, pair in enumerate(active_list):
+    for pair_id, pair in enumerate(contact_pairs):
 
-        # Calculate weights
-        element = elements[pair.elem_id]
-        coords = element.get_local_coord_on_edge(pair.local_seg, pair.xi)
-        weights = element.calc_N(*coords)
-
-        # Hitting node weight in B matrix
+        # Hitting (slave) node weight in B matrix
         # Equation (9.2.8a)
-        hit_dofs = ntdm[pair.node_id]
+        hit_dofs = ntdm[pair.slave_id]
         contact_hit_dofs = [cdm[dof] for dof in hit_dofs]
         B[contact_hit_dofs, pair_id] = -pair.normal
 
@@ -119,23 +120,53 @@ def contact_explicit_implicit(active_list, ntdm, elements, dt, M, R, v, a):
         R_cpl[contact_hit_dofs] = R[hit_dofs]
         M_cpl[contact_hit_dofs] = M[hit_dofs]
 
-        # Target node weights
-        # Also calculate velocity of target point
-        v_target = zeros(2)
-        for target_local_node_id, target_node_id in zip(pair.local_seg , pair.global_seg):
-            target_dofs = ntdm[target_node_id]
-            contact_target_dofs = [cdm[dof] for dof in target_dofs]
 
-            # Equations (9.2.14)
-            # Also note equation (9.2.8b) to explain lack of minus sign
-            B[contact_target_dofs, pair_id] = pair.normal * weights[target_local_node_id]
+        # NODE -> SEGMENT Contact
+        if isinstance(pair, NodeSegmentPair):
+            element_id, element_segment_id = sem[pair.master_id]
+
+            # Get element
+            element = elements[element_id]
+            local_segment_nodes = element.get_segment_local_nodes(element_segment_id)
+            segment_nodes = snpm[pair.master_id]
+
+            # Calculate shape function weights
+            weights = element.calc_N(*pair.xi)
+
+            # Weights for the segment only
+            phi = [weights[i] for i in local_segment_nodes]
+
+            # Calculate velocity of target point
+            v_target = zeros(2)
+            for target_local_node_id, target_node_id in enumerate(segment_nodes):
+                target_dofs = ntdm[target_node_id]
+                contact_target_dofs = [cdm[dof] for dof in target_dofs]
+
+                # Equations (9.2.14)
+                # Also note equation (9.2.8b) to explain lack of minus sign
+                B[contact_target_dofs, pair_id] = pair.normal * phi[target_local_node_id]
+
+                # Coupled residual and mass vectors
+                R_cpl[contact_target_dofs] = R[target_dofs]
+                M_cpl[contact_target_dofs] = M[target_dofs]
+
+                # Velocity of target point
+                v_target += phi[target_local_node_id] * v[target_dofs]
+
+
+        # NODE -> NODE Contact
+        else:
+            # Target (master) node weight in B matrix
+            target_dofs = ntdm[pair.master_id]
+            contact_target_dofs = [cdm[dof] for dof in target_dofs]
+            B[contact_target_dofs, pair_id] = pair.normal
 
             # Coupled residual and mass vectors
             R_cpl[contact_target_dofs] = R[target_dofs]
             M_cpl[contact_target_dofs] = M[target_dofs]
 
-            # Velocity of target point
-            v_target += weights[target_local_node_id] * v[target_dofs]
+            # Velocity of target (master) node
+            v_target = v[target_dofs]
 
         # Penetration Matrix
         # Equation (9.2.27)

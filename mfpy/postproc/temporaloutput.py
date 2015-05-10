@@ -1,6 +1,6 @@
 from numpy import inf, row_stack, array
 
-class TemporalVectorOutput:
+class TemporalOutput:
     """Container to store vector values over multiple time-steps.
 
     Attributes
@@ -16,7 +16,7 @@ class TemporalVectorOutput:
 
     Examples
     --------
-    >>> out = TemporalVectorOutput(0.1, ["u", "v"])
+    >>> out = TemporalOutput(0.1, ["u", "v"])
     >>> out.add(0.0, u = array([0,0,0]), v = array([1,1,1]))
     >>> print(out.u)
     [array([0, 0, 0])]
@@ -68,7 +68,7 @@ class TemporalVectorOutput:
 
 
     def finalize(self):
-        """Signal end of any more data being added. Every list of arrays is converted to a single array.
+        """Signal end of any more data being added. Every list of scalars/arrays is converted to a single array.
 
         Notes
         -----
@@ -82,7 +82,7 @@ class TemporalVectorOutput:
 
 def test():
     dt = 0.1
-    out = TemporalVectorOutput(dt, ["u","v","a"])
+    out = TemporalOutput(dt, ["u","v","a"])
 
     t = 0
     out.add(t, u=[], v=[], a=[])

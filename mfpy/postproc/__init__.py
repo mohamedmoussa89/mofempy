@@ -1,5 +1,5 @@
 """Contains post-processing and output functionality"""
 
-from .temporalvectoroutput import TemporalVectorOutput
+from .temporaloutput import TemporalOutput
 from .vtk import  vtk_write_output
 

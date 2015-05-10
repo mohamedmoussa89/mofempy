@@ -1,76 +1,46 @@
-from numpy import zeros, dot, inf
-from numpy.linalg import norm
-
-
 class NodeNodePair(object):
-    def __init__(self, node_id, other_id, normal, d_min):
-        self.node_id = node_id
-        self.other_id = other_id
-        self.normal = normal
-        self.d_min = d_min
+    """Container that describes a node/node pair
 
-
-def find_closest_node(nodes, search_node_id, node_ids):
-    """Find closest boundary node to a given  node
-
-    Parameters
+    Attributes
     ----------
-    nodes : list of array
-        List of node positions
-    search_node_id : int
-        ID of node to use for search
-    node_ids : list of int
-        List of node IDs that will be searched against
-
-    Returns
-    ------
-    found : NodeNodePair
-        Node-node pair
+    slave_id : int
+        Slave node ID
+    master_id : int
+        Master node ID
+    normal : array
+        Normal vector
+    d_min  : float
+        Penetration (negative)
     """
 
-    search_node = nodes[search_node_id]
+    def __init__(self, slave, master, normal, d):
+        self.slave_id = slave
+        self.master_id = master
+        self.normal = normal
+        self.d_min = d
 
-    found = NodeNodePair(search_node_id, None, None, inf)
-
-    # Check against all other nodes
-    for id in node_ids:
-        if (id == search_node_id): continue
-
-        other_node = nodes[id]
-
-        delta = other_node-search_node
-        normal = delta / norm(delta)
-        d = norm(delta)
-        if (d < found.d_min):
-            found.d_min = d
-            found.other_id = id
-            found.normal = normal
-
-    return found
+    def __str__(self):
+        return "NODE_NODE_PAIR(SLAVE %d, MASTER %d, NORMAL %s, D_MIN %s)" % (self.slave_id, self.master_id,
+                                                                             self.normal, self.d_min)
+    def __repr__(self): return self.__str__()
 
 
-def find_new_nn_pairs(nn_pairs, nodes, node_ids, threshold):
+from .nodesegmentpair import NodeSegmentPair
+def convert_to_node_segment_pair(nsm, snpm, pair):
+    """
+    Converts a NodeNodePair to a NodeSegmentPair
+    """
 
-    # Only search inactive nodes
-    active_nodes = set([pair.node_id for pair in nn_pairs])
-    inactive_nodes = set(node_ids) - active_nodes
+    if isinstance(pair, NodeSegmentPair): return pair
 
-    for node_id in inactive_nodes:
-        pair = find_closest_node(nodes, node_id, node_ids)
+    # Get first parent segment for this node
+    master_segment_id = nsm[pair.master_id][0]
+    if (master_segment_id == -1):
+        raise ValueError("Node %s does not have a parent segment" % pair.slave_id)
 
-        if pair.d_min <= threshold:
-            nn_pairs.append(pair)
+    # Determine correct xi value
+    xi = 0.0
+    if snpm[master_segment_id][1] == pair.master_id:
+        xi = 1.0
 
-    return nn_pairs
-
-
-def update_nn_pairs(nn_pairs, nodes):
-    for pair in nn_pairs:
-        delta = nodes[pair.node_id] - nodes[pair.other_id]
-        pair.d_min = norm(delta)
-        pair.normal = delta/norm(delta)
-
-    return nn_pairs
-
-def remove_nn_pairs(nn_pairs, threshold):
-    return [pair for pair in nn_pairs if pair.d_min < threshold]
+    return NodeSegmentPair(pair.slave_id, master_segment_id, pair.proj, xi, pair.normal, pair.d_min)

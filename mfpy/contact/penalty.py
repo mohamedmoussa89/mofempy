@@ -1,37 +1,43 @@
 """Penalty method for contact in explicit dynamics"""
 
-from numpy import zeros
+from numpy import array, zeros
 
-from .nodesegmentpair import get_penetrating_active_pairs
+from .nodenodepair import NodeNodePair
+from .nodesegmentpair import NodeSegmentPair
 
-def contact_penalty_method(active_list, num_dof, enm, ntdm, elements, penalty_stiff, t):
-
-    active_list = get_penetrating_active_pairs(active_list)
+def contact_penalty_method(num_dof, contact_pairs, enm, ntdm, sem, elements, penalty_stiff, t):
 
     fcont = zeros(num_dof)
 
-    if not active_list: return fcont
-
-    #print("TIME =",t)
-    for pair in active_list:
-        #print("\tNODE =", pair.node_id)
+    for pair in contact_pairs:
 
         # Calculate penalty force, in direction of normal
-        contact_force = penalty_stiff * (-pair.d_min) * pair.normal
+        contact_force = penalty_stiff * abs(pair.d_min) * pair.normal
 
-        # Unilateral contact - apply force only on hitting node
-        fcont[ntdm[pair.node_id]] = contact_force
-        #print("\t\tFCONT =", fcont)
+        # Apply force on slave node
+        fcont[ntdm[pair.slave_id]] += contact_force
 
-        # Bilateral contact - apply force on segment
-        element = elements[pair.elem_id]
-        local_edge_coord = element.get_local_coord_on_edge(pair.local_seg, pair.xi)
-        weights = element.calc_N(*local_edge_coord)
+        # NODE -> SEGMENT CONTACT
+        # Distribute the contact force to the target nodes on the segment
+        if isinstance(pair, NodeSegmentPair):
+            # Get element
+            element_id, element_segment_id = sem[pair.master_id]
+            element = elements[element_id]
 
-        #print("\t\tSCATTER")
-        for i, node_id in enumerate(enm[pair.elem_id]):
-            fcont[ntdm[node_id]] +=  - weights[i] * contact_force
-            #print("\t\tFCONT =", fcont)
-    #print("")
+            # Get segment/target nodes
+            local_segment_nodes = element.get_segment_local_nodes(element_segment_id)
+            target_nodes = [enm[element_id][i] for i in local_segment_nodes]
+
+            # Shape function weights for the segment
+            weights = element.calc_N(*pair.xi)
+            phi = [weights[i] for i in local_segment_nodes]
+
+            for i, node_id in enumerate(target_nodes):
+                fcont[ntdm[node_id]] +=  - phi[i] * contact_force
+
+        # NODE -> NODE CONTACT
+        # Apply force on the master node (negative direction)
+        elif isinstance(pair, NodeNodePair):
+            fcont[ntdm[pair.master_id]] -= contact_force
 
     return fcont
