@@ -8,10 +8,9 @@ from mfpy.controls import DynamicExplicit
 
 def BlockProblem():
 
-
-    dt = 1e-3
-    t_end = 2.0
-    pp_dt = dt
+    dt_scale = 0.1
+    t_end = 3.0
+    pp_dt = 1./30.
 
     # Node definitions
     nodes = [(0.,0.), (4.,0.), (4.,1.), (0.,1.),
@@ -38,7 +37,7 @@ def BlockProblem():
     out_scl, out_vec = DynamicExplicit.run(nodes, elements, materials,
                                            surfaces, pairs,
                                            vel_ic, vel_bc, fext_bc,
-                                           dt, t_end, pp_dt)
+                                           dt_scale, t_end, pp_dt)
 
     from pylab import plot, show, figure
     #plot(out_vec.t, out_vec.u[:,11]+1.0)

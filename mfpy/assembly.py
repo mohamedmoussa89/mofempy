@@ -1,4 +1,4 @@
-from numpy import array, empty, zeros, vstack
+from numpy import array, empty, zeros, vstack, sum as array_sum
 from numpy.linalg import det, inv as inverse
 
 from mfpy.dof import DOFSet
@@ -111,6 +111,19 @@ def assemble_internal_force(enm, edm, nodes_curr, elements, global_u, global_fin
         fint = elem.calc_internal_force(elem_nodes_curr, u)
         scatter_element_vector(edm[elem_id], fint, global_fint)
 
+
+def assemble_stiffness_sum(num_dof, edm, elements, u):
+    """
+    Assembles "summed" stiffness matrix (each row is summed, taking absolute value)
+    """
+    K_sum = zeros(num_dof)
+    for elem_id, elem in enumerate(elements):
+        u_loc = empty(elem.num_dof)
+        gather_element_vector(edm[elem_id], u, u_loc)
+        K_elem = array_sum(abs(elem.calc_linear_stiffness([], u_loc)), axis=1)
+        for local_dof, dof in enumerate(edm[elem_id]):
+            K_sum[dof] += K_elem[local_dof]
+    return K_sum
 
 def test():
     pass

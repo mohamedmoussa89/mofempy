@@ -2,12 +2,18 @@
 
 from numpy import array, empty, float64, zeros, dot, vstack
 
-from .control import Control
+from mfpy.controls.control import Control
 from mfpy.postproc import TemporalOutput
-from mfpy.assembly import calculate_enm, calculate_nds, calculate_ndm, calculate_edm, calculate_ntdm
-from mfpy.assembly import assemble_lumped_mass, assemble_internal_force, get_number_dofs, updated_node_positions
 from mfpy.boundcond import generate_bc_pairs, apply_bc_pairs_on_vec
 from mfpy.segment import calculate_nsm, calculate_npsm, calculate_snpm, calculate_sem, calculate_ssm
+
+# Assembly
+from mfpy.assembly import calculate_enm, calculate_nds, calculate_ndm, calculate_edm, calculate_ntdm
+from mfpy.assembly import get_number_dofs, updated_node_positions
+from mfpy.assembly import assemble_lumped_mass, assemble_internal_force, assemble_stiffness_sum
+
+# Critical timesteps
+from mfpy.controls.criticaltimestep import calculate_nodal_critical_timestep
 
 # Contact
 from mfpy.contact import create_surface_pairs
@@ -34,7 +40,7 @@ class DynamicExplicit(metaclass=Control):
     param_names = ["dt", "t_end"]
 
     @staticmethod
-    def run(nodes, elements, materials, surfaces, pairs, vel_ic, vel_bc, fext_bc, dt, t_end, pp_dt):
+    def run(nodes, elements, materials, surfaces, pairs, vel_ic, vel_bc, fext_bc, dt_scale, t_end, pp_dt):
 
         # Calculate DOF maps
         enm = calculate_enm(elements)
@@ -88,6 +94,7 @@ class DynamicExplicit(metaclass=Control):
         ssm = calculate_ssm(nsm, snpm)                  # Segment -> Segment Neighbours map
         surface_pairs = create_surface_pairs(npsm, surfaces, pairs)
         contact_pairs = []
+        contact_energy = 0
 
         t = 0
 
@@ -95,14 +102,14 @@ class DynamicExplicit(metaclass=Control):
         out_vec = TemporalOutput(pp_dt, ["u","v","a"])
         out_vec.add(t, u=u, v=v, a=a)
 
-        out_scl = TemporalOutput(pp_dt, ["kin_e","int_e","cnt_e"])
-        out_scl.add(t, kin_e = calc_kinetic_energy(M, v),
+        out_energy = TemporalOutput(pp_dt, ["kin_e","int_e","cnt_e"])
+        out_energy.add(t, kin_e = calc_kinetic_energy(M, v),
                        int_e = calc_internal_energy(edm, elements, u),
                        cnt_e = 0)
 
-        cnt_e = 0
-
-        count = 0
+        # Estimate critical time-step
+        K_sum = assemble_stiffness_sum(num_dof, edm, elements, u)
+        dt = dt_scale*calculate_nodal_critical_timestep(M, K_sum)
 
         while t + dt <= t_end:
             t += dt
@@ -116,11 +123,16 @@ class DynamicExplicit(metaclass=Control):
             assemble_internal_force(enm, edm, nodes_curr, elements, u, fint)
 
             # CONTACT - Search for node-segment pairs that have penetrated
+            fcont = 0
             contact_pairs = bucketsearch.one_pass_search(nsm, snpm, sem, ssm, contact_pairs, nodes_curr, elements, surface_pairs, t)
 
-            fcont = 0
+            # DEFENCE NODE
             #fcont = contact_defence_node(contact_pairs, enm, ntdm, sem, elements, M, R, v, dt, t)
-            fcont = contact_penalty_method(num_dof, contact_pairs, enm, ntdm, sem, elements, 2000, t)
+
+            # PENALTY METHOD
+            # Update critical timestep if required
+            fcont, K_sum_penalty = contact_penalty_method(num_dof, contact_pairs, enm, ntdm, sem, elements, 2000, K_sum)
+            dt = dt_scale*calculate_nodal_critical_timestep(M, K_sum_penalty)
 
             R = (fext - fint + fcont)
             a = 1/M * R
@@ -134,7 +146,7 @@ class DynamicExplicit(metaclass=Control):
 
             # Contact energy
             delta_cnt_e = dot(fcont, v*dt)
-            cnt_e += delta_cnt_e
+            contact_energy += delta_cnt_e
             #if abs(delta_cnt_e) > 1e-8:
             #    print("CONTACT at t =", t)
             #    print("TOTAL E =", cnt_e, "DELTA E =", delta_cnt_e)
@@ -144,14 +156,14 @@ class DynamicExplicit(metaclass=Control):
 
             # Output
             out_vec.add(t, u=u, v=v, a=a)
-            out_scl.add(t, kin_e = calc_kinetic_energy(M, v),
+            out_energy.add(t, kin_e = calc_kinetic_energy(M, v),
                            int_e = calc_internal_energy(edm, elements, u),
-                           cnt_e = cnt_e)
+                           cnt_e = contact_energy)
 
         out_vec.finalize()
-        out_scl.finalize()
+        out_energy.finalize()
 
-        return out_scl, out_vec
+        return out_energy, out_vec
 
 def VerticalTrussProblem():
     from mfpy.elements.quad import Quad

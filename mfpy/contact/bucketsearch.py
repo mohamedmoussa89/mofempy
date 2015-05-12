@@ -42,6 +42,7 @@ class BucketGrid(object):
             self.master_nodes = empty(0)
             self.slave_nodes = empty(0)
             self.master_segments = empty(0)
+            return
 
         # Cell size
         w = sqrt(2) * self.d_max
@@ -144,6 +145,9 @@ def find_new_contact_pairs(nsm, sem, grid, node_positions, elements, segment_pos
     """
 
     contact_pairs = []
+
+    if grid.spatial_bb is None:
+        return contact_pairs
 
     # For every (slave) cell
     for slave_cell_id in range(0, grid.num_cells):

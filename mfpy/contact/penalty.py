@@ -5,14 +5,21 @@ from numpy import array, zeros
 from .nodenodepair import NodeNodePair
 from .nodesegmentpair import NodeSegmentPair
 
-def contact_penalty_method(num_dof, contact_pairs, enm, ntdm, sem, elements, penalty_stiff, t):
+def contact_penalty_method(num_dof, contact_pairs, enm, ntdm, sem, elements, penalty_stiff, reduced_K = None):
 
     fcont = zeros(num_dof)
+
+    # Return a copy, not the original array
+    if reduced_K is not None:
+        reduced_K = array(reduced_K)
 
     for pair in contact_pairs:
 
         # Calculate penalty force, in direction of normal
         contact_force = penalty_stiff * abs(pair.d_min) * pair.normal
+
+        if reduced_K is not None:
+            reduced_K[ntdm[pair.slave_id]] += penalty_stiff
 
         # Apply force on slave node
         fcont[ntdm[pair.slave_id]] += contact_force
@@ -39,5 +46,8 @@ def contact_penalty_method(num_dof, contact_pairs, enm, ntdm, sem, elements, pen
         # Apply force on the master node (negative direction)
         elif isinstance(pair, NodeNodePair):
             fcont[ntdm[pair.master_id]] -= contact_force
+
+    if reduced_K is not None:
+        return fcont, reduced_K
 
     return fcont
