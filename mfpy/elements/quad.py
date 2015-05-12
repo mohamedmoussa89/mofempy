@@ -12,7 +12,10 @@ from mfpy.dof import DOF, DOFSet
 from mfpy.segment import project_node_on_segment
 
 class Quad(metaclass=Element):
-    """2D Quadrilateral Element"""
+    """
+    2D Quadrilateral Element
+    Full integration
+    """
     dof_sig = [DOFSet(DOF.X, DOF.Y),
                DOFSet(DOF.X, DOF.Y),
                DOFSet(DOF.X, DOF.Y),
@@ -161,7 +164,7 @@ class Quad(metaclass=Element):
 
         fint = zeros(8)
 
-        for (w, xi) in Quad.gauss_points:
+        for (w, xi) in self.gauss_points:
             w1, w2  = w
             xi, eta = xi
 
