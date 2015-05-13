@@ -25,3 +25,9 @@ class LinearElastic(metaclass = Material):
         tangent = lmbda*IoI + 2*mu*II
 
         return stress, tangent
+
+    def calc_bulk_modulus(self):
+        lmbda = self.params["lmbda"]
+        mu = self.params["mu"]
+
+        return lmbda + 2/3*mu

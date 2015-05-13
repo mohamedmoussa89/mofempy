@@ -158,7 +158,7 @@ class Quad(metaclass=Element):
     def calc_internal_force(self, nodes_curr, u):
         from numpy import hstack
 
-        h = self.params["thickness"]
+        t = self.params["thickness"]
         mat = self.mat
         X = hstack(self.nodes)
 
@@ -177,7 +177,7 @@ class Quad(metaclass=Element):
             epsilon = B.dot(u)
             sigma, C = mat.calc_2d(epsilon)
 
-            fint += w1*w2*B.transpose().dot(sigma)*h*detJ
+            fint += w1*w2*B.transpose().dot(sigma)*t*detJ
 
         return fint
 
