@@ -25,6 +25,9 @@ class Quad(metaclass=Element):
     gauss_weights = list(product([1,1],repeat=2))
     gauss_loc = list(product([-1/sqrt(3), 1/sqrt(3)],repeat=2))
 
+    #gauss_weights = [(2,2)]
+    #gauss_loc = [(0,0)]
+
     def __init__(self, nodes, enm, mat, **params):
         from mfpy.elements.element import check_params_valid
         assert(check_params_valid(Quad, params))

@@ -1,4 +1,4 @@
-from numpy import empty, array, dot, hstack
+from numpy import empty, array, dot, hstack, sum as array_sum
 
 from mfpy.dof import DOF, DOFSet
 from mfpy.elements.quad import Quad
@@ -26,7 +26,7 @@ class QuadRI(Quad):
     def calc_A(X):
         # Area
         # Eqn. (8.4.7)
-        return 0.5*( (X[1,0]-X[3,0])*(X[2,1]-X[0,1]) + (X[2,0]-X[0,0])+(X[3,1]-X[1,1]) )
+        return ( (X[2]-X[6])*(X[1]-X[5]) + (X[4]-X[0])+(X[7]-X[3]) )
 
 
     @staticmethod
@@ -39,26 +39,28 @@ class QuadRI(Quad):
     def calc_bx(X, A):
         # dNdX, part of strain displacement matrix
         # Eqn. (8.4.9)
-        bx =  1/(2*A) * array([X[1,1]-X[3,1],
-                               X[2,1]-X[0,1],
-                               X[3,1]-X[1,1],
-                               X[0,1]-X[2,1]])
+        bx =  1/(2*A) * array([X[3]-X[7],
+                               X[5]-X[1],
+                               X[7]-X[3],
+                               X[1]-X[5]])
+        return bx
 
     @staticmethod
     def calc_by(X, A):
         # dNdX, part of strain displacement matrix
         # Eqn. (8.4.9)
-        by =  1/(2*A) * array([X[3,0]-X[1,0],
-                               X[0,0]-X[2,0],
-                               X[1,0]-X[3,0],
-                               X[2,0]-X[0,0]])
+        by =  1/(2*A) * array([X[6]-X[2],
+                               X[0]-X[4],
+                               X[2]-X[6],
+                               X[4]-X[0]])
+        return by
 
     @staticmethod
     def calc_gamma(X, bx, by):
         # Eqn (8.4.11)
         h = array([1, -1, 1, -1])
-        hx = dot(h,X[:,0])
-        hy = dot(h,X[:,1])
+        hx = dot(h,X[0::2])
+        hy = dot(h,X[1::2])
         gamma = 0.25 * (h - hx*bx - hy*by)
 
         # Adjust gamma for our DOF signature
@@ -115,11 +117,11 @@ class QuadRI(Quad):
         stab_sigma = CQ * stab_epsilon
 
         # Reduced integrated internal force
-        fint_ri = 2*B0.transpose().dot(sigma)*t*detJ0
+        fint_ri = 2*2*B0.transpose().dot(sigma)*t*detJ0
 
         # Stabilization internal force
         # Eqn. (8.7.8)
-        fint_stab = A * stab_sigma
+        fint_stab = A * gamma.dot(stab_sigma)
 
         return fint_ri + fint_stab
 
@@ -146,7 +148,7 @@ class QuadRI(Quad):
         sigma, C = self.mat.calc_2d(epsilon)
 
         # Reduced integrated stiffness matrix
-        K_ri = 2*B0.transpose().dot(C).dot(B0)*t*detJ0
+        K_ri = 2*2*B0.transpose().dot(C).dot(B0)*t*detJ0
 
         # Stabilization stiffness
         # Eqn. (8.7.11)
@@ -156,20 +158,31 @@ class QuadRI(Quad):
 
 
 def test():
+    from numpy.linalg import matrix_rank
     from mfpy.materials.linearelastic import LinearElastic
 
     # Test create
     nodes = [array((0,0)), array((1,0)), array((1,1)), array((0,1))]
     enm = [0,1,2,3]
     mat = LinearElastic(lmbda=0,mu=1.0,rho=1)
-    elem = Quad(nodes, enm, mat, thickness=1)
+    elem = QuadRI(nodes, enm, mat, thickness=1)
 
     # Test internal force
     u = array([-1,0,
+               +1,0,
                -1,0,
-               1,0,
-               1,0])
-    fint,K = elem.calc_internal_force([], u)
+               +1,0])
+    fint = elem.calc_internal_force([], u)
+    K = elem.calc_linear_stiffness([], u)
+    print("Rank =", matrix_rank(K))
+    print(fint)
+    print(K.dot(u))
+
+
+    elem = Quad(nodes, enm, mat, thickness=1)
+    fint = elem.calc_internal_force([], u)
+    K = elem.calc_linear_stiffness([], u)
+    print("Rank =", matrix_rank(K))
     print(fint)
     print(K.dot(u))
 
